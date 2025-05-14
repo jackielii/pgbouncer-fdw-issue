@@ -11,6 +11,7 @@ func main() {
 	initDb1Direct()
 	createForeignLinkOnDb2()
 	// queryDb2Bouncer()
+	queryDb1Direct()
 	queryDb1Bouncer()
 }
 
@@ -43,9 +44,22 @@ func queryDb1Bouncer() {
 
 	var currentSchema string
 	try0(db1bouncer.QueryRow("SELECT current_schema()").Scan(&currentSchema))
-	log.Printf("current schema: %s", currentSchema)
+	log.Printf("current schema: %s", currentSchema) // this will show pg_catalog which is wrong
 
 	rows := try1(db1bouncer.Query("SELECT * FROM test1"))
+	defer rows.Close()
+	for rows.Next() {
+		var id int
+		var name string
+		try0(rows.Scan(&id, &name))
+		log.Printf("id: %d, name: %s", id, name)
+	}
+}
+
+func queryDb1Direct() {
+	db1 := try1(sql.Open("postgres", "user=postgres password=password host=127.0.0.1 dbname=db1 sslmode=disable port=54321"))
+	try0(db1.Ping())
+	rows := try1(db1.Query("SELECT * FROM test1"))
 	defer rows.Close()
 	for rows.Next() {
 		var id int
