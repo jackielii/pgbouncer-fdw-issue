@@ -10,9 +10,9 @@ import (
 func main() {
 	initDb1Direct()
 	createForeignLinkOnDb2()
-	// queryDb2Bouncer()
 	queryDb1Direct()
 	queryDb1Bouncer()
+	queryDb2Bouncer()
 }
 
 // initDb1 connects to postgres directly and creates a table
@@ -31,21 +31,24 @@ func createForeignLinkOnDb2() {
 	try1(db2bouncer.Exec(`
 create extension if not exists postgres_fdw;
 
-drop server if exists db1 cascade;
-create server if not exists db1 FOREIGN DATA WRAPPER postgres_fdw options (host 'pgbouncer', port '6432', dbname 'db1');
-create user mapping if not exists for postgres server db1 options (user 'postgres', password 'password');
+drop server if exists db1server cascade;
+create server if not exists db1server FOREIGN DATA WRAPPER postgres_fdw options (
+		host 'pgbouncer', port '6432', dbname 'db1session', updatable 'false'
+);
+create user mapping if not exists for postgres server db1server options (user 'postgres', password 'password');
 create schema if not exists db1schema;
-import foreign schema public from server db1 into db1schema;`))
+import foreign schema public from server db1server into db1schema;`))
 }
 
 func queryDb1Bouncer() {
-	db1bouncer := try1(sql.Open("postgres", "user=postgres password=password dbname=db1 sslmode=disable port=6432"))
+	db1bouncer := try1(sql.Open("postgres", "user=postgres password=password dbname=db1 sslmode=disable port=6432 search_path=public"))
 	try0(db1bouncer.Ping())
 
 	var currentSchema string
 	try0(db1bouncer.QueryRow("SELECT current_schema()").Scan(&currentSchema))
 	log.Printf("current schema: %s", currentSchema) // this will show pg_catalog which is wrong
 
+	log.Printf("querying db1 via pgbouncer")
 	rows := try1(db1bouncer.Query("SELECT * FROM test1"))
 	defer rows.Close()
 	for rows.Next() {
@@ -59,6 +62,8 @@ func queryDb1Bouncer() {
 func queryDb1Direct() {
 	db1 := try1(sql.Open("postgres", "user=postgres password=password host=127.0.0.1 dbname=db1 sslmode=disable port=54321"))
 	try0(db1.Ping())
+
+	log.Printf("querying db1 directly without pgbouncer")
 	rows := try1(db1.Query("SELECT * FROM test1"))
 	defer rows.Close()
 	for rows.Next() {
@@ -74,6 +79,7 @@ func queryDb2Bouncer() {
 	db2bouncer := try1(sql.Open("postgres", "user=postgres password=password dbname=db2 sslmode=disable port=6432"))
 	try0(db2bouncer.Ping())
 
+	log.Printf("querying db2 using foreign server via pgbouncer")
 	rows := try1(db2bouncer.Query("SELECT * FROM db1schema.test1"))
 	defer rows.Close()
 
