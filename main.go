@@ -21,7 +21,7 @@ func initDb1Direct() {
 	try0(db1.Ping())
 
 	try1(db1.Exec("CREATE TABLE IF NOT EXISTS test1 (id SERIAL PRIMARY KEY, name TEXT)"))
-	try1(db1.Exec("INSERT INTO test1 (name) VALUES ($1)", "test1"))
+	try1(db1.Exec("INSERT INTO test1 (id, name) VALUES (1, $1) ON CONFLICT DO NOTHING", "test1"))
 }
 
 // createForeignLinkOnDb2 uses pgbouncer to connect to db2 and creates a foreign link to db1
