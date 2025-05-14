@@ -14,10 +14,9 @@ panic: pq: relation "test1" does not exist
 
 1. set up 2 databases: `db1` and `db2`
 2. setup pgbouncer that connects to both in `transaction` pooling mode. See [pgbouncer.ini](pgbouncer.ini)
-3. create a foreign table in `db2` that connects to `db1` using postgres_fdw
-4. open a connection to `db1` using pgbouncer
-5. run a query in `db1`
-6. error occurs because wrong default schema is used
+3. connect to `db2` via pgbouncer and creates foreign schema connects to `db1` using postgres_fdw
+4. open a connection to `db1` via pgbouncer and run a query in `db1`
+5. observe an error occurs because wrong schema is used
 
 ## Why this happens: (my theory)
 
